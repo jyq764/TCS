@@ -93,6 +93,11 @@ h1 {
         0 8px 32px rgba(0, 0, 0, 0.3),
         inset 0 0 20px rgba(255, 255, 255, 0.05);
     outline: none;
+    touch-action: none;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+    cursor: pointer;
 }
 
 .controls {
