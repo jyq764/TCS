@@ -3,7 +3,7 @@ const CANVAS_SIZE = 400;
 const GRID_SIZE = 10;
 const CELL_COUNT = CANVAS_SIZE / GRID_SIZE;
 const INITIAL_SPEED = 150;
-const FOOD_COUNT = 3;
+const FOOD_COUNT = 10;
 
 // 获取DOM元素
 const canvas = document.getElementById('gameCanvas');
@@ -35,6 +35,7 @@ const speedValue = document.getElementById('speedValue');
 // 游戏变量
 let snake = [];
 let foods = [];
+let aiSnakes = [];
 let direction = { x: 1, y: 0 };
 let nextDirection = { x: 1, y: 0 };
 let score = 0;
@@ -45,6 +46,232 @@ let gamePaused = false;
 let gameLoop;
 let foodMoveTimer = 0;
 const FOOD_MOVE_INTERVAL = 3000;
+
+// 颜色调整辅助函数
+function adjustColor(color, amount) {
+    const hex = color.replace('#', '');
+    const r = Math.max(0, Math.min(255, parseInt(hex.substr(0, 2), 16) + amount));
+    const g = Math.max(0, Math.min(255, parseInt(hex.substr(2, 2), 16) + amount));
+    const b = Math.max(0, Math.min(255, parseInt(hex.substr(4, 2), 16) + amount));
+    return `rgb(${r}, ${g}, ${b})`;
+}
+
+function adjustColorWithAlpha(color, alpha) {
+    const hex = color.replace('#', '');
+    const r = parseInt(hex.substr(0, 2), 16);
+    const g = parseInt(hex.substr(2, 2), 16);
+    const b = parseInt(hex.substr(4, 2), 16);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+// AI蛇类
+class AISnake {
+    constructor(startX, startY, color, name) {
+        this.body = [
+            { x: startX, y: startY },
+            { x: startX - 1, y: startY },
+            { x: startX - 2, y: startY }
+        ];
+        this.direction = { x: 1, y: 0 };
+        this.nextDirection = { x: 1, y: 0 };
+        this.color = color;
+        this.name = name;
+        this.targetFood = null;
+    }
+    
+    move() {
+        this.direction = this.nextDirection;
+        const head = { 
+            x: this.body[0].x + this.direction.x, 
+            y: this.body[0].y + this.direction.y 
+        };
+        
+        this.body.unshift(head);
+        
+        let ateFood = false;
+        foods = foods.filter(food => {
+            if (head.x === food.x && head.y === food.y) {
+                ateFood = true;
+                return false;
+            }
+            return true;
+        });
+        
+        if (ateFood) {
+            while (foods.length < FOOD_COUNT) {
+                let newFood;
+                do {
+                    newFood = {
+                        x: Math.floor(Math.random() * CELL_COUNT),
+                        y: Math.floor(Math.random() * CELL_COUNT)
+                    };
+                } while (
+                    snake.some(segment => segment.x === newFood.x && segment.y === newFood.y) ||
+                    aiSnakes.some(ai => ai.body.some(segment => segment.x === newFood.x && segment.y === newFood.y)) ||
+                    foods.some(f => f.x === newFood.x && f.y === newFood.y)
+                );
+                foods.push(newFood);
+            }
+        } else {
+            this.body.pop();
+        }
+        
+        return !this.checkCollision();
+    }
+    
+    checkCollision() {
+        const head = this.body[0];
+        
+        if (head.x < 0 || head.x >= CELL_COUNT || head.y < 0 || head.y >= CELL_COUNT) {
+            return true;
+        }
+        
+        return false;
+    }
+    
+    findNearestFood() {
+        let nearestFood = null;
+        let minDistance = Infinity;
+        
+        foods.forEach(food => {
+            const distance = Math.abs(this.body[0].x - food.x) + Math.abs(this.body[0].y - food.y);
+            if (distance < minDistance) {
+                minDistance = distance;
+                nearestFood = food;
+            }
+        });
+        
+        return nearestFood;
+    }
+    
+    // 使用BFS找到到目标的最短路径
+    findPath(targetX, targetY) {
+        const head = this.body[0];
+        const queue = [{ x: head.x, y: head.y, path: [] }];
+        const visited = new Set();
+        visited.add(`${head.x},${head.y}`);
+        
+        // 获取所有蛇的位置作为障碍物
+        const obstacles = new Set();
+        snake.forEach(segment => obstacles.add(`${segment.x},${segment.y}`));
+        this.body.forEach(segment => obstacles.add(`${segment.x},${segment.y}`));
+        aiSnakes.forEach(ai => {
+            if (ai !== this) {
+                ai.body.forEach(segment => obstacles.add(`${segment.x},${segment.y}`));
+            }
+        });
+        
+        const directions = [
+            { x: 1, y: 0 },
+            { x: -1, y: 0 },
+            { x: 0, y: 1 },
+            { x: 0, y: -1 }
+        ];
+        
+        while (queue.length > 0) {
+            const current = queue.shift();
+            
+            if (current.x === targetX && current.y === targetY) {
+                return current.path;
+            }
+            
+            for (const dir of directions) {
+                const newX = current.x + dir.x;
+                const newY = current.y + dir.y;
+                const key = `${newX},${newY}`;
+                
+                if (newX >= 0 && newX < CELL_COUNT && 
+                    newY >= 0 && newY < CELL_COUNT &&
+                    !visited.has(key) && 
+                    !obstacles.has(key)) {
+                    visited.add(key);
+                    queue.push({
+                        x: newX,
+                        y: newY,
+                        path: [...current.path, dir]
+                    });
+                }
+            }
+        }
+        
+        return null;
+    }
+    
+    decideDirection() {
+        const nearestFood = this.findNearestFood();
+        if (!nearestFood) return;
+        
+        const head = this.body[0];
+        const possibleDirections = [
+            { x: 1, y: 0 },
+            { x: -1, y: 0 },
+            { x: 0, y: 1 },
+            { x: 0, y: -1 }
+        ];
+        
+        // 尝试使用BFS找到最短路径
+        const path = this.findPath(nearestFood.x, nearestFood.y);
+        
+        if (path && path.length > 0) {
+            // 检查第一个方向是否合法（不能掉头）
+            const firstDir = path[0];
+            if (!(firstDir.x === -this.direction.x && firstDir.y === -this.direction.y)) {
+                this.nextDirection = firstDir;
+                return;
+            }
+        }
+        
+        // 如果BFS失败，回退到贪心算法
+        let bestDirection = this.direction;
+        let bestScore = -Infinity;
+        
+        possibleDirections.forEach(dir => {
+            if (dir.x === -this.direction.x && dir.y === -this.direction.y) return;
+            
+            const newX = head.x + dir.x;
+            const newY = head.y + dir.y;
+            
+            if (newX < 0 || newX >= CELL_COUNT || newY < 0 || newY >= CELL_COUNT) return;
+            
+            if (this.body.some(segment => segment.x === newX && segment.y === newY)) return;
+            if (snake.some(segment => segment.x === newX && segment.y === newY)) return;
+            if (aiSnakes.some(ai => ai !== this && ai.body.some(segment => segment.x === newX && segment.y === newY))) return;
+            
+            const distanceToFood = Math.abs(newX - nearestFood.x) + Math.abs(newY - nearestFood.y);
+            
+            // 评估该方向的安全性
+            let safetyScore = 0;
+            const safetyCheckDirections = [
+                { x: 1, y: 0 },
+                { x: -1, y: 0 },
+                { x: 0, y: 1 },
+                { x: 0, y: -1 }
+            ];
+            
+            safetyCheckDirections.forEach(safeDir => {
+                const checkX = newX + safeDir.x;
+                const checkY = newY + safeDir.y;
+                if (checkX >= 0 && checkX < CELL_COUNT && 
+                    checkY >= 0 && checkY < CELL_COUNT &&
+                    !this.body.some(segment => segment.x === checkX && segment.y === checkY) &&
+                    !snake.some(segment => segment.x === checkX && segment.y === checkY) &&
+                    !aiSnakes.some(ai => ai.body.some(segment => segment.x === checkX && segment.y === checkY))) {
+                    safetyScore += 1;
+                }
+            });
+            
+            // 综合评分：距离食物越近越好，周围安全空间越多越好
+            const score = -distanceToFood * 2 + safetyScore * 3 + Math.random() * 1;
+            
+            if (score > bestScore) {
+                bestScore = score;
+                bestDirection = dir;
+            }
+        });
+        
+        this.nextDirection = bestDirection;
+    }
+}
 
 // 初始化游戏
 function initGame() {
@@ -62,6 +289,12 @@ function initGame() {
     // 重置分数
     score = 0;
     updateScore();
+    
+    // 初始化AI蛇
+    aiSnakes = [
+        new AISnake(10, 10, '#ff6b00', 'AI蛇1'),
+        new AISnake(30, 30, '#9b59b6', 'AI蛇2')
+    ];
     
     // 生成初始食物
     generateFood();
@@ -96,6 +329,7 @@ function generateFood() {
             };
         } while (
             snake.some(segment => segment.x === newFood.x && segment.y === newFood.y) ||
+            aiSnakes.some(ai => ai.body.some(segment => segment.x === newFood.x && segment.y === newFood.y)) ||
             foods.some(f => f.x === newFood.x && f.y === newFood.y)
         );
         foods.push(newFood);
@@ -119,6 +353,7 @@ function moveFoods() {
         if (newX >= 0 && newX < CELL_COUNT && 
             newY >= 0 && newY < CELL_COUNT &&
             !snake.some(segment => segment.x === newX && segment.y === newY) &&
+            !aiSnakes.some(ai => ai.body.some(segment => segment.x === newX && segment.y === newY)) &&
             !foods.some(f => f !== food && f.x === newX && f.y === newY)) {
             food.x = newX;
             food.y = newY;
@@ -215,6 +450,77 @@ function drawGame() {
         }
     });
     
+    // 绘制AI蛇
+    aiSnakes.forEach(ai => {
+        ai.body.forEach((segment, index) => {
+            const x = segment.x * GRID_SIZE;
+            const y = segment.y * GRID_SIZE;
+            const size = GRID_SIZE - 2;
+            const radius = 6;
+            
+            // 创建渐变
+            const gradient = ctx.createLinearGradient(x, y, x + size, y + size);
+            
+            if (index === 0) {
+                // AI蛇头 - 使用AI蛇的颜色
+                gradient.addColorStop(0, ai.color);
+                gradient.addColorStop(1, adjustColor(ai.color, -30));
+                ctx.shadowColor = ai.color;
+                ctx.shadowBlur = 10;
+            } else {
+                // AI蛇身 - 渐变，越往后越暗
+                const brightness = Math.max(0.4, 1 - (index / ai.body.length) * 0.6);
+                gradient.addColorStop(0, adjustColorWithAlpha(ai.color, brightness));
+                gradient.addColorStop(1, adjustColorWithAlpha(adjustColor(ai.color, -10), brightness));
+                ctx.shadowColor = adjustColorWithAlpha(ai.color, 0.5);
+                ctx.shadowBlur = 5;
+            }
+            
+            // 绘制圆角矩形
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.roundRect(x + 1, y + 1, size, size, radius);
+            ctx.fill();
+            
+            // 添加高光效果
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+            ctx.beginPath();
+            ctx.roundRect(x + 3, y + 3, size / 2, size / 2, radius / 2);
+            ctx.fill();
+            
+            // AI蛇头添加眼睛
+            if (index === 0) {
+                ctx.shadowBlur = 0;
+                ctx.fillStyle = '#fff';
+                const eyeSize = 3;
+                const eyeOffset = 5;
+                
+                if (ai.direction.x === 1) {
+                    ctx.beginPath();
+                    ctx.arc(x + size - eyeOffset, y + eyeOffset, eyeSize, 0, Math.PI * 2);
+                    ctx.arc(x + size - eyeOffset, y + size - eyeOffset, eyeSize, 0, Math.PI * 2);
+                    ctx.fill();
+                } else if (ai.direction.x === -1) {
+                    ctx.beginPath();
+                    ctx.arc(x + eyeOffset, y + eyeOffset, eyeSize, 0, Math.PI * 2);
+                    ctx.arc(x + eyeOffset, y + size - eyeOffset, eyeSize, 0, Math.PI * 2);
+                    ctx.fill();
+                } else if (ai.direction.y === -1) {
+                    ctx.beginPath();
+                    ctx.arc(x + eyeOffset, y + eyeOffset, eyeSize, 0, Math.PI * 2);
+                    ctx.arc(x + size - eyeOffset, y + eyeOffset, eyeSize, 0, Math.PI * 2);
+                    ctx.fill();
+                } else {
+                    ctx.beginPath();
+                    ctx.arc(x + eyeOffset, y + size - eyeOffset, eyeSize, 0, Math.PI * 2);
+                    ctx.arc(x + size - eyeOffset, y + size - eyeOffset, eyeSize, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+        });
+    });
+    
     // 绘制食物 - 红色圆形带发光效果
     foods.forEach((food, index) => {
         const foodX = food.x * GRID_SIZE + GRID_SIZE / 2;
@@ -229,7 +535,14 @@ function drawGame() {
         const colors = [
             ['#ff6b81', '#ff4757'],
             ['#ffa502', '#ff7f50'],
-            ['#2ed573', '#26de81']
+            ['#2ed573', '#26de81'],
+            ['#5352ed', '#3742fa'],
+            ['#ff4757', '#ff6b81'],
+            ['#7bed9f', '#2ed573'],
+            ['#70a1ff', '#5352ed'],
+            ['#ff7f50', '#ffa502'],
+            ['#2ed573', '#7bed9f'],
+            ['#3742fa', '#70a1ff']
         ];
         const colorIndex = index % colors.length;
         const foodGradient = ctx.createRadialGradient(foodX - 3, foodY - 3, 0, foodX, foodY, foodRadius);
@@ -273,7 +586,7 @@ function gameStep() {
     // 更新方向
     direction = nextDirection;
     
-    // 移动蛇
+    // 移动玩家蛇
     const head = { x: snake[0].x + direction.x, y: snake[0].y + direction.y };
     
     // 将新头部添加到蛇的前端
@@ -302,6 +615,7 @@ function gameStep() {
                 };
             } while (
                 snake.some(segment => segment.x === newFood.x && segment.y === newFood.y) ||
+                aiSnakes.some(ai => ai.body.some(segment => segment.x === newFood.x && segment.y === newFood.y)) ||
                 foods.some(f => f.x === newFood.x && f.y === newFood.y)
             );
             foods.push(newFood);
@@ -310,6 +624,12 @@ function gameStep() {
         // 移除蛇尾
         snake.pop();
     }
+    
+    // 移动AI蛇
+    aiSnakes.forEach(ai => {
+        ai.decideDirection();
+        ai.move();
+    });
     
     // 移动食物
     foodMoveTimer += gameSpeed;
@@ -328,7 +648,7 @@ function gameStep() {
     drawGame();
 }
 
-// 检查碰撞（墙壁或自身）
+// 检查碰撞（墙壁）
 function checkCollision() {
     const head = snake[0];
     
@@ -337,12 +657,7 @@ function checkCollision() {
         return true;
     }
     
-    // 自身碰撞
-    for (let i = 1; i < snake.length; i++) {
-        if (head.x === snake[i].x && head.y === snake[i].y) {
-            return true;
-        }
-    }
+    // 移除自身碰撞检测，允许蛇碰到自己的身体
     
     return false;
 }
