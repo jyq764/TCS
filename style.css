@@ -12,22 +12,28 @@
     max-width: 600px;
     text-align: center;
     overflow: hidden;
+    position: relative;
 }
 
 .ad-top {
-    margin-top: 30px;
+    margin-top: 20px;
+    margin-bottom: 15px;
+    padding: 0 20px;
 }
 
 .ad-middle {
-    margin: 25px auto;
-    padding: 10px;
-    background: rgba(255, 255, 255, 0.9);
-    border-radius: 10px;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    margin: 20px 0;
+    padding: 15px;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(240, 242, 245, 0.95));
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    border: 1px solid rgba(0, 0, 0, 0.05);
 }
 
 .ad-bottom {
-    margin-bottom: 30px;
+    margin-top: 20px;
+    margin-bottom: 20px;
+    padding: 0 20px;
 }
 
 body {
@@ -194,11 +200,13 @@ h1 {
 
 @media (max-width: 480px) {
     .container {
-        padding: 20px;
+        padding: 15px;
+        max-width: 100%;
     }
     
     h1 {
-        font-size: 2em;
+        font-size: 1.8em;
+        margin-bottom: 15px;
     }
     
     #gameCanvas {
@@ -207,7 +215,128 @@ h1 {
     }
     
     .game-info {
-        flex-direction: column;
+        flex-direction: row;
         gap: 10px;
+        font-size: 1em;
     }
+    
+    .score, .high-score {
+        padding: 8px 15px;
+        font-size: 0.9em;
+    }
+    
+    /* 移动端广告优化 */
+    .ad-top, .ad-middle, .ad-bottom {
+        padding: 10px 15px;
+        margin: 15px auto;
+    }
+    
+    .ad-middle {
+        margin: 15px 0;
+    }
+    
+    .mock-ad {
+        min-height: 70px;
+        padding: 12px;
+    }
+    
+    .mock-ad-content {
+        font-size: 14px;
+    }
+    
+    .mock-ad-description {
+        font-size: 12px;
+    }
+    
+    .mock-ad-button {
+        padding: 6px 12px;
+        font-size: 12px;
+    }
+}
+
+@media (max-width: 768px) {
+    .mobile-controls {
+        display: block;
+    }
+    
+    .controls p {
+        display: none;
+    }
+    
+    .controls h3 {
+        display: none;
+    }
+    
+    /* 平板和手机端广告优化 */
+    .ad-top, .ad-middle, .ad-bottom {
+        max-width: 100%;
+    }
+}
+
+/* 移动端控制按钮样式 */
+.mobile-controls {
+    display: none;
+    margin: 20px 0;
+    padding: 20px;
+    background: #f5f5f5;
+    border-radius: 15px;
+    box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.control-row {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.control-row:last-child {
+    margin-bottom: 0;
+}
+
+.control-btn {
+    width: 70px;
+    height: 70px;
+    font-size: 28px;
+    font-weight: bold;
+    color: white;
+    background: linear-gradient(135deg, #4CAF50, #45a049);
+    border: none;
+    border-radius: 15px;
+    cursor: pointer;
+    box-shadow: 0 4px 10px rgba(76, 175, 80, 0.4);
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.control-btn:active {
+    transform: scale(0.95);
+    box-shadow: 0 2px 5px rgba(76, 175, 80, 0.4);
+}
+
+.pause-btn {
+    width: 150px;
+    height: 50px;
+    font-size: 18px;
+    font-weight: bold;
+    color: white;
+    background: linear-gradient(135deg, #ff9800, #f57c00);
+    border: none;
+    border-radius: 25px;
+    cursor: pointer;
+    box-shadow: 0 4px 10px rgba(255, 152, 0, 0.4);
+    transition: all 0.2s ease;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.pause-btn:active {
+    transform: scale(0.95);
+    box-shadow: 0 2px 5px rgba(255, 152, 0, 0.4);
 }

@@ -61,17 +61,6 @@
     </style>
 </head>
 <body>
-    <!-- 顶部广告 -->
-    <div class="ad-top">
-        <div class="mock-ad">
-            <div class="mock-ad-header">广告</div>
-            <div class="mock-ad-content">限时优惠</div>
-            <div class="mock-ad-description">新用户注册即可获得100元优惠券</div>
-            <button class="mock-ad-button">立即领取</button>
-            <div class="ad-disclaimer">广告</div>
-        </div>
-    </div>
-    
     <div class="container">
         <h1>贪吃蛇游戏</h1>
         <div class="game-info">
@@ -92,6 +81,22 @@
                 <div class="ad-disclaimer">广告</div>
             </div>
         </div>
+        
+        <!-- 移动端控制按钮 -->
+        <div class="mobile-controls">
+            <div class="control-row">
+                <button class="control-btn" id="btn-up">↑</button>
+            </div>
+            <div class="control-row">
+                <button class="control-btn" id="btn-left">←</button>
+                <button class="control-btn" id="btn-down">↓</button>
+                <button class="control-btn" id="btn-right">→</button>
+            </div>
+            <div class="control-row">
+                <button class="pause-btn" id="btn-pause">暂停</button>
+            </div>
+        </div>
+        
         <div class="controls">
             <h3>控制说明</h3>
             <p>使用方向键或WASD键控制蛇的移动方向</p>
@@ -104,17 +109,6 @@
             </div>
             
             <button id="resetBtn">重新开始</button>
-        </div>
-    </div>
-    
-    <!-- 底部广告 -->
-    <div class="ad-bottom">
-        <div class="mock-ad">
-            <div class="mock-ad-header">广告</div>
-            <div class="mock-ad-content">会员限时折扣</div>
-            <div class="mock-ad-description">开通会员享受所有游戏无广告体验</div>
-            <button class="mock-ad-button">立即开通</button>
-            <div class="ad-disclaimer">广告</div>
         </div>
     </div>
     
