@@ -367,45 +367,68 @@ const btnLeft = document.getElementById('btn-left');
 const btnRight = document.getElementById('btn-right');
 const btnPause = document.getElementById('btn-pause');
 
+// 处理方向控制
+function handleDirection(newDir) {
+    if (gameRunning && !gamePaused) {
+        if (newDir.x !== 0 && direction.x === 0) {
+            nextDirection = newDir;
+        } else if (newDir.y !== 0 && direction.y === 0) {
+            nextDirection = newDir;
+        }
+    }
+}
+
+// 为上按钮添加事件
 if (btnUp) {
-    btnUp.addEventListener('click', () => {
-        if (gameRunning && !gamePaused && direction.y === 0) {
-            nextDirection = { x: 0, y: -1 };
-        }
-    });
+    const handleUp = (e) => {
+        e.preventDefault();
+        handleDirection({ x: 0, y: -1 });
+    };
+    btnUp.addEventListener('click', handleUp);
+    btnUp.addEventListener('touchstart', handleUp, { passive: false });
 }
 
+// 为下按钮添加事件
 if (btnDown) {
-    btnDown.addEventListener('click', () => {
-        if (gameRunning && !gamePaused && direction.y === 0) {
-            nextDirection = { x: 0, y: 1 };
-        }
-    });
+    const handleDown = (e) => {
+        e.preventDefault();
+        handleDirection({ x: 0, y: 1 });
+    };
+    btnDown.addEventListener('click', handleDown);
+    btnDown.addEventListener('touchstart', handleDown, { passive: false });
 }
 
+// 为左按钮添加事件
 if (btnLeft) {
-    btnLeft.addEventListener('click', () => {
-        if (gameRunning && !gamePaused && direction.x === 0) {
-            nextDirection = { x: -1, y: 0 };
-        }
-    });
+    const handleLeft = (e) => {
+        e.preventDefault();
+        handleDirection({ x: -1, y: 0 });
+    };
+    btnLeft.addEventListener('click', handleLeft);
+    btnLeft.addEventListener('touchstart', handleLeft, { passive: false });
 }
 
+// 为右按钮添加事件
 if (btnRight) {
-    btnRight.addEventListener('click', () => {
-        if (gameRunning && !gamePaused && direction.x === 0) {
-            nextDirection = { x: 1, y: 0 };
-        }
-    });
+    const handleRight = (e) => {
+        e.preventDefault();
+        handleDirection({ x: 1, y: 0 });
+    };
+    btnRight.addEventListener('click', handleRight);
+    btnRight.addEventListener('touchstart', handleRight, { passive: false });
 }
 
+// 为暂停按钮添加事件
 if (btnPause) {
-    btnPause.addEventListener('click', () => {
+    const handlePause = (e) => {
+        e.preventDefault();
         if (gameRunning) {
             gamePaused = !gamePaused;
             btnPause.textContent = gamePaused ? '继续' : '暂停';
         }
-    });
+    };
+    btnPause.addEventListener('click', handlePause);
+    btnPause.addEventListener('touchstart', handlePause, { passive: false });
 }
 
 // 启动游戏
