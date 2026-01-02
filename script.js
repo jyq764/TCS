@@ -1,8 +1,9 @@
 // 游戏常量
 const CANVAS_SIZE = 400;
-const GRID_SIZE = 20;
+const GRID_SIZE = 10;
 const CELL_COUNT = CANVAS_SIZE / GRID_SIZE;
 const INITIAL_SPEED = 150;
+const FOOD_COUNT = 3;
 
 // 获取DOM元素
 const canvas = document.getElementById('gameCanvas');
@@ -33,7 +34,7 @@ const speedValue = document.getElementById('speedValue');
 
 // 游戏变量
 let snake = [];
-let food = { x: 0, y: 0 };
+let foods = [];
 let direction = { x: 1, y: 0 };
 let nextDirection = { x: 1, y: 0 };
 let score = 0;
@@ -42,6 +43,8 @@ let gameSpeed = INITIAL_SPEED;
 let gameRunning = false;
 let gamePaused = false;
 let gameLoop;
+let foodMoveTimer = 0;
+const FOOD_MOVE_INTERVAL = 3000;
 
 // 初始化游戏
 function initGame() {
@@ -83,11 +86,44 @@ function initGame() {
 
 // 生成食物
 function generateFood() {
-    // 确保食物不会出现在蛇身上
-    do {
-        food.x = Math.floor(Math.random() * CELL_COUNT);
-        food.y = Math.floor(Math.random() * CELL_COUNT);
-    } while (snake.some(segment => segment.x === food.x && segment.y === food.y));
+    foods = [];
+    for (let i = 0; i < FOOD_COUNT; i++) {
+        let newFood;
+        do {
+            newFood = {
+                x: Math.floor(Math.random() * CELL_COUNT),
+                y: Math.floor(Math.random() * CELL_COUNT)
+            };
+        } while (
+            snake.some(segment => segment.x === newFood.x && segment.y === newFood.y) ||
+            foods.some(f => f.x === newFood.x && f.y === newFood.y)
+        );
+        foods.push(newFood);
+    }
+}
+
+// 移动食物
+function moveFoods() {
+    foods.forEach(food => {
+        const directions = [
+            { x: 0, y: -1 },
+            { x: 0, y: 1 },
+            { x: -1, y: 0 },
+            { x: 1, y: 0 }
+        ];
+        const randomDir = directions[Math.floor(Math.random() * directions.length)];
+        
+        const newX = food.x + randomDir.x;
+        const newY = food.y + randomDir.y;
+        
+        if (newX >= 0 && newX < CELL_COUNT && 
+            newY >= 0 && newY < CELL_COUNT &&
+            !snake.some(segment => segment.x === newX && segment.y === newY) &&
+            !foods.some(f => f !== food && f.x === newX && f.y === newY)) {
+            food.x = newX;
+            food.y = newY;
+        }
+    });
 }
 
 // 绘制游戏
@@ -180,30 +216,38 @@ function drawGame() {
     });
     
     // 绘制食物 - 红色圆形带发光效果
-    const foodX = food.x * GRID_SIZE + GRID_SIZE / 2;
-    const foodY = food.y * GRID_SIZE + GRID_SIZE / 2;
-    const foodRadius = GRID_SIZE / 2 - 2;
-    
-    // 食物发光效果
-    ctx.shadowColor = '#ff4757';
-    ctx.shadowBlur = 15;
-    
-    // 食物渐变
-    const foodGradient = ctx.createRadialGradient(foodX - 3, foodY - 3, 0, foodX, foodY, foodRadius);
-    foodGradient.addColorStop(0, '#ff6b81');
-    foodGradient.addColorStop(1, '#ff4757');
-    
-    ctx.fillStyle = foodGradient;
-    ctx.beginPath();
-    ctx.arc(foodX, foodY, foodRadius, 0, Math.PI * 2);
-    ctx.fill();
-    
-    // 食物高光
-    ctx.shadowBlur = 0;
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
-    ctx.beginPath();
-    ctx.arc(foodX - 3, foodY - 3, foodRadius / 3, 0, Math.PI * 2);
-    ctx.fill();
+    foods.forEach((food, index) => {
+        const foodX = food.x * GRID_SIZE + GRID_SIZE / 2;
+        const foodY = food.y * GRID_SIZE + GRID_SIZE / 2;
+        const foodRadius = GRID_SIZE / 2 - 2;
+        
+        // 食物发光效果
+        ctx.shadowColor = '#ff4757';
+        ctx.shadowBlur = 15;
+        
+        // 食物渐变 - 不同食物使用不同颜色
+        const colors = [
+            ['#ff6b81', '#ff4757'],
+            ['#ffa502', '#ff7f50'],
+            ['#2ed573', '#26de81']
+        ];
+        const colorIndex = index % colors.length;
+        const foodGradient = ctx.createRadialGradient(foodX - 3, foodY - 3, 0, foodX, foodY, foodRadius);
+        foodGradient.addColorStop(0, colors[colorIndex][0]);
+        foodGradient.addColorStop(1, colors[colorIndex][1]);
+        
+        ctx.fillStyle = foodGradient;
+        ctx.beginPath();
+        ctx.arc(foodX, foodY, foodRadius, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // 食物高光
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+        ctx.beginPath();
+        ctx.arc(foodX - 3, foodY - 3, foodRadius / 3, 0, Math.PI * 2);
+        ctx.fill();
+    });
     
     // 绘制暂停信息
     if (gamePaused) {
@@ -236,13 +280,42 @@ function gameStep() {
     snake.unshift(head);
     
     // 检查是否吃到食物
-    if (head.x === food.x && head.y === food.y) {
+    let ateFood = false;
+    foods = foods.filter(food => {
+        if (head.x === food.x && head.y === food.y) {
+            ateFood = true;
+            return false;
+        }
+        return true;
+    });
+    
+    if (ateFood) {
         score += 10;
         updateScore();
-        generateFood();
+        // 补充食物
+        while (foods.length < FOOD_COUNT) {
+            let newFood;
+            do {
+                newFood = {
+                    x: Math.floor(Math.random() * CELL_COUNT),
+                    y: Math.floor(Math.random() * CELL_COUNT)
+                };
+            } while (
+                snake.some(segment => segment.x === newFood.x && segment.y === newFood.y) ||
+                foods.some(f => f.x === newFood.x && f.y === newFood.y)
+            );
+            foods.push(newFood);
+        }
     } else {
         // 移除蛇尾
         snake.pop();
+    }
+    
+    // 移动食物
+    foodMoveTimer += gameSpeed;
+    if (foodMoveTimer >= FOOD_MOVE_INTERVAL) {
+        moveFoods();
+        foodMoveTimer = 0;
     }
     
     // 检查碰撞
@@ -360,11 +433,7 @@ window.addEventListener('keydown', handleKeyPress);
 resetBtn.addEventListener('click', initGame);
 speedSlider.addEventListener('input', handleSpeedChange);
 
-// 移动端控制按钮事件监听
-const btnUp = document.getElementById('btn-up');
-const btnDown = document.getElementById('btn-down');
-const btnLeft = document.getElementById('btn-left');
-const btnRight = document.getElementById('btn-right');
+// 移动端暂停按钮
 const btnPause = document.getElementById('btn-pause');
 
 // 处理方向控制
@@ -376,62 +445,6 @@ function handleDirection(newDir) {
             nextDirection = newDir;
         }
     }
-}
-
-// 为上按钮添加事件
-if (btnUp) {
-    const handleUp = (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        handleDirection({ x: 0, y: -1 });
-    };
-    btnUp.addEventListener('click', handleUp);
-    btnUp.addEventListener('touchstart', handleUp, { passive: false });
-    btnUp.addEventListener('touchend', (e) => {
-        e.preventDefault();
-    });
-}
-
-// 为下按钮添加事件
-if (btnDown) {
-    const handleDown = (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        handleDirection({ x: 0, y: 1 });
-    };
-    btnDown.addEventListener('click', handleDown);
-    btnDown.addEventListener('touchstart', handleDown, { passive: false });
-    btnDown.addEventListener('touchend', (e) => {
-        e.preventDefault();
-    });
-}
-
-// 为左按钮添加事件
-if (btnLeft) {
-    const handleLeft = (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        handleDirection({ x: -1, y: 0 });
-    };
-    btnLeft.addEventListener('click', handleLeft);
-    btnLeft.addEventListener('touchstart', handleLeft, { passive: false });
-    btnLeft.addEventListener('touchend', (e) => {
-        e.preventDefault();
-    });
-}
-
-// 为右按钮添加事件
-if (btnRight) {
-    const handleRight = (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        handleDirection({ x: 1, y: 0 });
-    };
-    btnRight.addEventListener('click', handleRight);
-    btnRight.addEventListener('touchstart', handleRight, { passive: false });
-    btnRight.addEventListener('touchend', (e) => {
-        e.preventDefault();
-    });
 }
 
 // 为暂停按钮添加事件
@@ -457,11 +470,13 @@ initGame();
 // 绘制初始游戏画面
 drawGame();
 
-// 画布触屏滑动控制
+// 画布触屏滑动控制 - 优化版
 let touchStartX = 0;
 let touchStartY = 0;
-let touchEndX = 0;
-let touchEndY = 0;
+let lastTouchX = 0;
+let lastTouchY = 0;
+let isTouching = false;
+let touchStartTime = 0;
 
 canvas.addEventListener('touchstart', (e) => {
     e.preventDefault();
@@ -469,51 +484,63 @@ canvas.addEventListener('touchstart', (e) => {
     const touch = e.touches[0];
     touchStartX = touch.clientX;
     touchStartY = touch.clientY;
+    lastTouchX = touch.clientX;
+    lastTouchY = touch.clientY;
+    isTouching = true;
+    touchStartTime = Date.now();
 }, { passive: false });
 
 canvas.addEventListener('touchmove', (e) => {
     e.preventDefault();
     e.stopPropagation();
+    
+    if (!isTouching || !gameRunning || gamePaused) return;
+    
+    const touch = e.touches[0];
+    const currentX = touch.clientX;
+    const currentY = touch.clientY;
+    
+    // 计算从上一次位置到当前位置的移动
+    const deltaX = currentX - lastTouchX;
+    const deltaY = currentY - lastTouchY;
+    const minSwipeDistance = 15;
+    
+    // 实时检测滑动方向
+    if (Math.abs(deltaX) > minSwipeDistance || Math.abs(deltaY) > minSwipeDistance) {
+        // 使用角度判断方向，更精确
+        const angle = Math.atan2(deltaY, deltaX) * 180 / Math.PI;
+        
+        // 将角度映射到四个方向
+        // -45° 到 45°: 右
+        // 45° 到 135°: 下
+        // 135° 到 180° 或 -180° 到 -135°: 左
+        // -135° 到 -45°: 上
+        if (angle >= -45 && angle <= 45) {
+            handleDirection({ x: 1, y: 0 });
+        } else if (angle > 45 && angle <= 135) {
+            handleDirection({ x: 0, y: 1 });
+        } else if (angle > 135 || angle <= -135) {
+            handleDirection({ x: -1, y: 0 });
+        } else {
+            handleDirection({ x: 0, y: -1 });
+        }
+        
+        lastTouchX = currentX;
+        lastTouchY = currentY;
+    }
 }, { passive: false });
 
 canvas.addEventListener('touchend', (e) => {
     e.preventDefault();
     e.stopPropagation();
-    const touch = e.changedTouches[0];
-    touchEndX = touch.clientX;
-    touchEndY = touch.clientY;
-    
-    handleSwipe();
+    isTouching = false;
 }, { passive: false });
 
 canvas.addEventListener('touchcancel', (e) => {
     e.preventDefault();
     e.stopPropagation();
+    isTouching = false;
 }, { passive: false });
-
-function handleSwipe() {
-    const deltaX = touchEndX - touchStartX;
-    const deltaY = touchEndY - touchStartY;
-    const minSwipeDistance = 30;
-    
-    if (Math.abs(deltaX) > Math.abs(deltaY)) {
-        if (Math.abs(deltaX) > minSwipeDistance) {
-            if (deltaX > 0) {
-                handleDirection({ x: 1, y: 0 });
-            } else {
-                handleDirection({ x: -1, y: 0 });
-            }
-        }
-    } else {
-        if (Math.abs(deltaY) > minSwipeDistance) {
-            if (deltaY > 0) {
-                handleDirection({ x: 0, y: 1 });
-            } else {
-                handleDirection({ x: 0, y: -1 });
-            }
-        }
-    }
-}
 
 // 防止方向快速切换导致的问题
 setInterval(() => {
