@@ -98,20 +98,34 @@ class AISnake {
         });
         
         if (ateFood) {
-            while (foods.length < FOOD_COUNT) {
+            console.log('AI蛇吃到了食物，补充食物中...');
+            let attempts = 0;
+            const maxAttempts = 1000;
+            while (foods.length < FOOD_COUNT && attempts < maxAttempts) {
                 let newFood;
+                let foodAttempts = 0;
+                const maxFoodAttempts = 100;
                 do {
                     newFood = {
                         x: Math.floor(Math.random() * CELL_COUNT),
                         y: Math.floor(Math.random() * CELL_COUNT)
                     };
+                    foodAttempts++;
+                    if (foodAttempts > maxFoodAttempts) {
+                        console.log('AI蛇无法生成食物，尝试次数过多');
+                        break;
+                    }
                 } while (
                     snake.some(segment => segment.x === newFood.x && segment.y === newFood.y) ||
                     aiSnakes.some(ai => ai.body.some(segment => segment.x === newFood.x && segment.y === newFood.y)) ||
                     foods.some(f => f.x === newFood.x && f.y === newFood.y)
                 );
-                foods.push(newFood);
+                if (foodAttempts <= maxFoodAttempts) {
+                    foods.push(newFood);
+                }
+                attempts++;
             }
+            console.log('AI蛇补充食物完成，当前食物数量:', foods.length);
         } else {
             this.body.pop();
         }
@@ -292,8 +306,8 @@ function initGame() {
     
     // 初始化AI蛇
     aiSnakes = [
-        new AISnake(10, 10, '#ff6b00', 'AI蛇1'),
-        new AISnake(30, 30, '#9b59b6', 'AI蛇2')
+        new AISnake(5, 5, '#ff6b00', 'AI蛇1'),
+        new AISnake(35, 35, '#9b59b6', 'AI蛇2')
     ];
     
     // 生成初始食物
@@ -322,18 +336,28 @@ function generateFood() {
     foods = [];
     for (let i = 0; i < FOOD_COUNT; i++) {
         let newFood;
+        let attempts = 0;
+        const maxAttempts = 1000;
         do {
             newFood = {
                 x: Math.floor(Math.random() * CELL_COUNT),
                 y: Math.floor(Math.random() * CELL_COUNT)
             };
+            attempts++;
+            if (attempts > maxAttempts) {
+                console.log('无法生成食物，尝试次数过多');
+                break;
+            }
         } while (
             snake.some(segment => segment.x === newFood.x && segment.y === newFood.y) ||
             aiSnakes.some(ai => ai.body.some(segment => segment.x === newFood.x && segment.y === newFood.y)) ||
             foods.some(f => f.x === newFood.x && f.y === newFood.y)
         );
-        foods.push(newFood);
+        if (attempts <= maxAttempts) {
+            foods.push(newFood);
+        }
     }
+    console.log('生成了', foods.length, '个食物');
 }
 
 // 移动食物
@@ -606,20 +630,33 @@ function gameStep() {
         score += 10;
         updateScore();
         // 补充食物
-        while (foods.length < FOOD_COUNT) {
+        let attempts = 0;
+        const maxAttempts = 1000;
+        while (foods.length < FOOD_COUNT && attempts < maxAttempts) {
             let newFood;
+            let foodAttempts = 0;
+            const maxFoodAttempts = 100;
             do {
                 newFood = {
                     x: Math.floor(Math.random() * CELL_COUNT),
                     y: Math.floor(Math.random() * CELL_COUNT)
                 };
+                foodAttempts++;
+                if (foodAttempts > maxFoodAttempts) {
+                    console.log('玩家蛇无法生成食物，尝试次数过多');
+                    break;
+                }
             } while (
                 snake.some(segment => segment.x === newFood.x && segment.y === newFood.y) ||
                 aiSnakes.some(ai => ai.body.some(segment => segment.x === newFood.x && segment.y === newFood.y)) ||
                 foods.some(f => f.x === newFood.x && f.y === newFood.y)
             );
-            foods.push(newFood);
+            if (foodAttempts <= maxFoodAttempts) {
+                foods.push(newFood);
+            }
+            attempts++;
         }
+        console.log('玩家蛇补充食物完成，当前食物数量:', foods.length);
     } else {
         // 移除蛇尾
         snake.pop();
@@ -630,6 +667,8 @@ function gameStep() {
         ai.decideDirection();
         ai.move();
     });
+    
+    console.log('AI蛇移动后，食物数量:', foods.length);
     
     // 移动食物
     foodMoveTimer += gameSpeed;
