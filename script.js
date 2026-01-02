@@ -367,13 +367,18 @@ const btnLeft = document.getElementById('btn-left');
 const btnRight = document.getElementById('btn-right');
 const btnPause = document.getElementById('btn-pause');
 
+console.log('移动端控制按钮:', { btnUp, btnDown, btnLeft, btnRight, btnPause });
+
 // 处理方向控制
 function handleDirection(newDir) {
+    console.log('方向控制:', newDir, '当前方向:', direction, '游戏运行:', gameRunning, '游戏暂停:', gamePaused);
     if (gameRunning && !gamePaused) {
         if (newDir.x !== 0 && direction.x === 0) {
             nextDirection = newDir;
+            console.log('设置新方向:', nextDirection);
         } else if (newDir.y !== 0 && direction.y === 0) {
             nextDirection = newDir;
+            console.log('设置新方向:', nextDirection);
         }
     }
 }
@@ -382,46 +387,68 @@ function handleDirection(newDir) {
 if (btnUp) {
     const handleUp = (e) => {
         e.preventDefault();
+        e.stopPropagation();
+        console.log('上按钮被点击');
         handleDirection({ x: 0, y: -1 });
     };
     btnUp.addEventListener('click', handleUp);
     btnUp.addEventListener('touchstart', handleUp, { passive: false });
+    btnUp.addEventListener('touchend', (e) => {
+        e.preventDefault();
+    });
 }
 
 // 为下按钮添加事件
 if (btnDown) {
     const handleDown = (e) => {
         e.preventDefault();
+        e.stopPropagation();
+        console.log('下按钮被点击');
         handleDirection({ x: 0, y: 1 });
     };
     btnDown.addEventListener('click', handleDown);
     btnDown.addEventListener('touchstart', handleDown, { passive: false });
+    btnDown.addEventListener('touchend', (e) => {
+        e.preventDefault();
+    });
 }
 
 // 为左按钮添加事件
 if (btnLeft) {
     const handleLeft = (e) => {
         e.preventDefault();
+        e.stopPropagation();
+        console.log('左按钮被点击');
         handleDirection({ x: -1, y: 0 });
     };
     btnLeft.addEventListener('click', handleLeft);
     btnLeft.addEventListener('touchstart', handleLeft, { passive: false });
+    btnLeft.addEventListener('touchend', (e) => {
+        e.preventDefault();
+    });
 }
 
 // 为右按钮添加事件
 if (btnRight) {
     const handleRight = (e) => {
         e.preventDefault();
+        e.stopPropagation();
+        console.log('右按钮被点击');
         handleDirection({ x: 1, y: 0 });
     };
     btnRight.addEventListener('click', handleRight);
     btnRight.addEventListener('touchstart', handleRight, { passive: false });
+    btnRight.addEventListener('touchend', (e) => {
+        e.preventDefault();
+    });
 }
 
 // 为暂停按钮添加事件
 if (btnPause) {
     const handlePause = (e) => {
         e.preventDefault();
+        e.stopPropagation();
+        console.log('暂停按钮被点击');
         if (gameRunning) {
             gamePaused = !gamePaused;
             btnPause.textContent = gamePaused ? '继续' : '暂停';
@@ -429,6 +456,9 @@ if (btnPause) {
     };
     btnPause.addEventListener('click', handlePause);
     btnPause.addEventListener('touchstart', handlePause, { passive: false });
+    btnPause.addEventListener('touchend', (e) => {
+        e.preventDefault();
+    });
 }
 
 // 启动游戏
@@ -436,6 +466,70 @@ initGame();
 
 // 绘制初始游戏画面
 drawGame();
+
+// 画布触屏滑动控制
+let touchStartX = 0;
+let touchStartY = 0;
+let touchEndX = 0;
+let touchEndY = 0;
+
+canvas.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    const touch = e.touches[0];
+    touchStartX = touch.clientX;
+    touchStartY = touch.clientY;
+    console.log('触摸开始:', touchStartX, touchStartY);
+}, { passive: false });
+
+canvas.addEventListener('touchmove', (e) => {
+    e.preventDefault();
+}, { passive: false });
+
+canvas.addEventListener('touchend', (e) => {
+    e.preventDefault();
+    const touch = e.changedTouches[0];
+    touchEndX = touch.clientX;
+    touchEndY = touch.clientY;
+    console.log('触摸结束:', touchEndX, touchEndY);
+    
+    handleSwipe();
+}, { passive: false });
+
+function handleSwipe() {
+    const deltaX = touchEndX - touchStartX;
+    const deltaY = touchEndY - touchStartY;
+    const minSwipeDistance = 30; // 最小滑动距离
+    
+    console.log('滑动距离:', deltaX, deltaY);
+    
+    if (Math.abs(deltaX) > Math.abs(deltaY)) {
+        // 水平滑动
+        if (Math.abs(deltaX) > minSwipeDistance) {
+            if (deltaX > 0) {
+                // 向右滑动
+                console.log('向右滑动');
+                handleDirection({ x: 1, y: 0 });
+            } else {
+                // 向左滑动
+                console.log('向左滑动');
+                handleDirection({ x: -1, y: 0 });
+            }
+        }
+    } else {
+        // 垂直滑动
+        if (Math.abs(deltaY) > minSwipeDistance) {
+            if (deltaY > 0) {
+                // 向下滑动
+                console.log('向下滑动');
+                handleDirection({ x: 0, y: 1 });
+            } else {
+                // 向上滑动
+                console.log('向上滑动');
+                handleDirection({ x: 0, y: -1 });
+            }
+        }
+    }
+}
 
 // 防止方向快速切换导致的问题
 setInterval(() => {
